@@ -11,8 +11,8 @@ from fabric.api import local, env, put, run
 from time import strftime
 import os.path
 
-env.hosts = ['3.229.122.175', '35.171.146.79']
-
+env.hosts = ["52.3.247.63", "54.234.100.112"]
+env.user = "ubuntu"
 
 def do_deploy(archive_path):
     """ deploy to a web server """
