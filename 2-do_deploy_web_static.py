@@ -1,61 +1,41 @@
 #!/usr/bin/python3
 """
-Fabric script that distributes an archive to your web servers
-"""
+ that distributes an archive to your web servers,
+ using the function do_deploy
 
-from datetime import datetime
-from fabric.api import *
-import os
+ run:
+ fab -f 2-do_deploy_web_static.py do_deploy:archive_path=
+ versions/web_static_20170315003959.tgz -i my_ssh_private_key -u
+ ubuntu
+"""
+from fabric.api import env, put, run
+import os.path
 
 env.hosts = ["52.3.247.63", "54.234.100.112"]
 env.user = "ubuntu"
-
-
-def do_pack():
-    """
-        return the archive path if archive has generated correctly.
-    """
-
-    local("mkdir -p versions")
-    date = datetime.now().strftime("%Y%m%d%H%M%S")
-    archived_f_path = "versions/web_static_{}.tgz".format(date)
-    t_gzip_archive = local("tar -cvzf {} web_static".format(archived_f_path))
-
-    if t_gzip_archive.succeeded:
-        return archived_f_path
-    else:
-        return None
+env.key_filename = '~/.ssh/school'
+# env.use_ssh_config
 
 
 def do_deploy(archive_path):
-    """Distributes an archive to your web servers."""
+    """ deploy to a web server """
     if not os.path.exists(archive_path):
         return False
-
     try:
-        # Upload the archive to the /tmp/ directory of the web server
+        file = archive_path.split("/")[-1]
+        name = file.split(".")[0]
+        path = "/data/web_static/releases/".format(name)
         put(archive_path, "/tmp/")
-
-        # Uncompress the archive to the folder
-        # /data/web_static/releases/<archive filename without extension>
-        filename = os.path.basename(archive_path)
-        dirname = "/data/web_static/releases/{}".format(filename.split('.')[0])
-        run("mkdir -p {}".format(dirname))
-        run("tar -xzf /tmp/{} -C {}".format(filename, dirname))
-        run("rm /tmp/{}".format(filename))
-        run("mv {}/web_static/* {}/".format(dirname, dirname))
-        run("rm -rf {}/web_static".format(dirname))
-
-        # Delete the symbolic link /data/web_static/current from the web server
-        run("rm -rf /data/web_static/current")
-
-        # Create a new the symbolic link /data/web_static/current on the web server,
-        # linked to the new version of your code (/data/web_static/releases/<archive filename without extension>)
-        run("ln -s {} /data/web_static/current".format(dirname))
-
-        # All operations have been done correctly
+        run('sudo mkdir -p {}{}/'.format(path, name))
+        run('sudo tar -xzf /tmp/{} -C {}{}/'.format(file, path, name))
+        run('sudo rm /tmp/{}'.format(file))
+        run('sudo mv {0}{1}/web_static/* {0}{1}/'.format(path, name))
+        run("sudo rm -rf {}{}/web_static".format(path, name))
+        run('sudo rm -rf /data/web_static/current')
+        run("sudo ln -s {}{}/ /data/web_static/current".format(path, name))
+        run('echo "New version deployed!"')
         return True
-
-    except:
-        # Something went wrong
+    except BaseException:
         return False
+        # run('echo "wahala!"')
+
